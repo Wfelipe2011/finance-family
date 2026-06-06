@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { AgentMemoryService } from './agent-memory.service';
 
 function config(overrides: Record<string, string | undefined> = {}) {
-  const values = {
+  const values: Record<string, string | undefined> = {
     DATABASE_URL: 'postgres://postgres:postgres@localhost:5433/fin_ai_test',
     ...overrides,
   };

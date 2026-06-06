@@ -3,9 +3,9 @@ import { ChatOpenAI } from '@langchain/openai';
 import { tool } from '@langchain/core/tools';
 import { summarizationMiddleware } from 'langchain';
 import { z } from 'zod';
+import type { AgentDraftResult, AgentResult } from '@fin-ai/shared/lancamento';
 import { IAConfigService } from '../config/ia-config.service';
 import type { ChatJobPayload } from '../chat/chat.service';
-import type { CreateLancamentoDto } from '../lancamentos/dto/create-lancamento.dto';
 import { LancamentosService } from '../lancamentos/lancamentos.service';
 import { AgentFactoryService } from './agent-factory.service';
 import {
@@ -15,12 +15,13 @@ import {
 import { AgentMemoryService } from './agent-memory.service';
 import { AudioExtractorAgentService } from './audio-extractor-agent.service';
 import { ConsultorAgentService } from './consultor-agent.service';
-import { parseCreateExpense } from './expense-parser';
 import { ImageExtractorAgentService } from './image-extractor-agent.service';
 import { OperadorAgentService } from './operador-agent.service';
 
 @Injectable()
 export class AgentOrchestratorService {
+  private readonly latestDraftByUser = new Map<number, AgentDraftResult>();
+
   constructor(
     private readonly iaConfigService: IAConfigService,
     private readonly memoryService: AgentMemoryService,
@@ -32,12 +33,45 @@ export class AgentOrchestratorService {
     private readonly agentFactory: AgentFactoryService = new AgentFactoryService(),
   ) {}
 
-  async process(payload: ChatJobPayload) {
+  async process(
+    payload: ChatJobPayload,
+    lifecycle?: {
+      onTranscribing?: () => Promise<void>;
+      onProcessingIa?: () => Promise<void>;
+    },
+  ) {
     const model = await this.modelFor(payload.usuarioId);
+    if (payload.attachments?.length) {
+      await lifecycle?.onTranscribing?.();
+    }
     const input = await this.toMemorySafeInput(payload, model);
 
+    if (this.isExplicitConfirmation(payload.rawInput || payload.content)) {
+      const draft = this.latestDraftByUser.get(payload.usuarioId);
+      if (draft) {
+        const commit = await this.operador.invoke(
+          {
+            action: 'commit',
+            operation: draft.operation,
+            payload: draft.payload,
+            familyContext: payload.familyContext,
+          },
+          model,
+          payload.usuarioId,
+          payload.familyContext,
+        );
+        if (commit.status === 'commit') {
+          this.latestDraftByUser.delete(payload.usuarioId);
+        }
+        return this.humanizeAgentResult(commit);
+      }
+    }
+
     const consultorTool = tool(
-      (args) => this.consultor.invoke(args.pergunta, model, payload.usuarioId),
+      async (args) =>
+        JSON.stringify(
+          await this.consultor.invoke(args.pergunta, model, payload.usuarioId),
+        ),
       {
         name: 'chamar_subagente_consultor',
         description:
@@ -47,7 +81,15 @@ export class AgentOrchestratorService {
     );
 
     const operadorTool = tool(
-      (args) => this.operador.invoke(args.comando, model, payload.usuarioId),
+      async (args) =>
+        JSON.stringify(
+          await this.operador.invoke(
+            args.comando,
+            model,
+            payload.usuarioId,
+            payload.familyContext,
+          ),
+        ),
       {
         name: 'chamar_subagente_operador',
         description:
@@ -96,8 +138,10 @@ export class AgentOrchestratorService {
       store: this.memoryService.store,
       middleware: [this.createSummarizationMiddleware(model)],
       systemPrompt:
-        'Voce e um roteador financeiro. Use memoria duravel quando ajudar. Consulta, medias, datas e listas: chamar_subagente_consultor. Criar, editar ou apagar gastos: chamar_subagente_operador. Para mutacoes incompletas ou ambiguas, faca 1 pergunta curta e amigavel em vez de chamar subagente. Antes de editar/apagar, identifique um gasto unico; se houver duvida, pergunte. Salve memoria so se o usuario declarou fato estavel ou ferramenta confirmou. Responda curto.',
+        'Voce e o assistente financeiro em PT-BR. Use contexto recente antes de perguntar de novo. Consultas: chame consultor. Criar/editar/apagar: chame operador; draft exige confirmacao, commit significa salvo. Rejected vira pergunta objetiva. Read/commit vira resposta curta. Salve memoria so para fatos estaveis declarados.',
     });
+
+    await lifecycle?.onProcessingIa?.();
 
     const result = await agent.invoke(
       { messages: [{ role: 'user', content: input }] } as never,
@@ -110,13 +154,19 @@ export class AgentOrchestratorService {
     );
 
     const message = this.extractText(result);
-    const fallback = parseCreateExpense(payload.content);
-    if (fallback && !(await this.expenseExists(payload.usuarioId, fallback))) {
-      const row = await this.lancamentosService.create(
-        payload.usuarioId,
-        fallback,
-      );
-      return `Gasto ${row.descricao} cadastrado.`;
+    const structured = this.parseAgentResult(message);
+    if (structured) {
+      return this.humanizeAgentResult(structured, payload.usuarioId);
+    }
+
+    const directDraft = await this.operador.invoke(
+      payload.rawInput || payload.content,
+      model,
+      payload.usuarioId,
+      payload.familyContext,
+    );
+    if (directDraft.status === 'draft' || directDraft.status === 'rejected') {
+      return this.humanizeAgentResult(directDraft, payload.usuarioId);
     }
 
     return message;
@@ -146,8 +196,14 @@ export class AgentOrchestratorService {
     model: ChatOpenAI,
   ): Promise<string> {
     const sections: string[] = [];
-    if (payload.content) {
-      sections.push(payload.content);
+    if (payload.rawInput || payload.content) {
+      sections.push(payload.rawInput || payload.content);
+    }
+
+    if (payload.familyContext) {
+      sections.push(
+        `Contexto familiar: ${JSON.stringify(payload.familyContext)}`,
+      );
     }
 
     for (const attachment of payload.attachments ?? []) {
@@ -182,17 +238,56 @@ export class AgentOrchestratorService {
     return typeof last === 'string' ? last : JSON.stringify(last ?? result);
   }
 
-  private async expenseExists(usuarioId: number, dto: CreateLancamentoDto) {
-    const rows = await this.lancamentosService.findAll(usuarioId, {
-      dataInicio: dto.data,
-      dataFim: dto.data,
-      categoria: dto.categoria,
-    });
+  private humanizeAgentResult(result: AgentResult, usuarioId?: number) {
+    if (result.status === 'draft') {
+      if (usuarioId) {
+        this.latestDraftByUser.set(usuarioId, result);
+      }
+      if (result.operation === 'edit') {
+        return result.message ?? 'Vou editar esse lancamento. Confirma?';
+      }
+      if (result.operation === 'delete') {
+        return result.message ?? 'Vou apagar esse lancamento. Confirma?';
+      }
+      const payload = result.payload as {
+        descricao?: string;
+        valor?: number;
+        categoria?: string;
+      };
+      return (
+        result.message ??
+        `Vou cadastrar ${payload.descricao ?? 'este lancamento'} por R$ ${Number(payload.valor ?? 0).toFixed(2)} em ${payload.categoria ?? 'categoria informada'}. Confirma?`
+      );
+    }
+    if (result.status === 'commit') {
+      return result.message ?? 'Lancamento confirmado.';
+    }
+    if (result.status === 'read') {
+      return result.message ?? JSON.stringify(result.data);
+    }
+    return `Preciso de ${result.missing_fields.join(', ')} para continuar.`;
+  }
 
-    return rows.some(
-      (row) =>
-        row.descricao.toLowerCase() === dto.descricao.toLowerCase() &&
-        row.valor === dto.valor,
+  private parseAgentResult(message: string): AgentResult | null {
+    try {
+      const parsed = JSON.parse(message) as AgentResult;
+      if (
+        parsed?.status === 'draft' ||
+        parsed?.status === 'commit' ||
+        parsed?.status === 'read' ||
+        parsed?.status === 'rejected'
+      ) {
+        return parsed;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
+
+  private isExplicitConfirmation(input: string) {
+    return /^(sim|s|confirmo|confirma|pode cadastrar|pode salvar|ok|isso)$/i.test(
+      input.trim(),
     );
   }
 }

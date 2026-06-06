@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Defines the Docker Compose development environment for the database, backend server, and PWA client.
+
+## Requirements
 
 ### Requirement: Docker Compose dev environment
 The system SHALL provide a `docker-compose.yml` with 3 services: `db` (postgres:17-alpine), `server` (NestJS), `client` (Next.js), with proper healthchecks and dependency ordering.

@@ -4,6 +4,7 @@ import type { LancamentoDTO } from '@fin-ai/shared/lancamento';
 import { stringify } from 'csv-stringify/sync';
 import { Repository } from 'typeorm';
 import { Lancamento } from '../entities/lancamento.entity';
+import { normalizeCategoria } from './categoria.values';
 import { CreateLancamentoDto } from './dto/create-lancamento.dto';
 import { LancamentoFilterDto } from './dto/lancamento-filter.dto';
 import { UpdateLancamentoDto } from './dto/update-lancamento.dto';
@@ -20,7 +21,7 @@ export class LancamentosService {
       descricao: dto.descricao,
       valor: dto.valor.toFixed(2),
       data: dto.data,
-      categoria: dto.categoria,
+      categoria: normalizeCategoria(dto.categoria),
       usuario_id: usuarioId,
     });
 
@@ -48,7 +49,7 @@ export class LancamentosService {
 
     if (filters.categoria) {
       query.andWhere('lancamento.categoria = :categoria', {
-        categoria: filters.categoria,
+        categoria: normalizeCategoria(filters.categoria),
       });
     }
 
@@ -64,7 +65,7 @@ export class LancamentosService {
       lancamento.valor = dto.valor.toFixed(2);
     }
     if (dto.categoria !== undefined) {
-      lancamento.categoria = dto.categoria;
+      lancamento.categoria = normalizeCategoria(dto.categoria);
     }
     if (dto.data !== undefined) {
       lancamento.data = dto.data;

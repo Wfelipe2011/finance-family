@@ -1,4 +1,5 @@
 import type { LancamentoDTO } from "@fin-ai/shared";
+import { LancamentoMobileRow } from "@/components/LancamentoMobileRow";
 
 const money = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 const date = new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" });
@@ -13,8 +14,14 @@ export function LancamentoTable({ items }: { items: LancamentoDTO[] }) {
   }
 
   return (
-    <div className="card-utility overflow-x-auto">
-      <table className="w-full min-w-[560px] text-left">
+    <div className="grid gap-3">
+      <div className="grid gap-3 md:hidden" aria-label="Lista de lançamentos">
+        {items.map((item) => (
+          <LancamentoMobileRow key={item.id} item={item} />
+        ))}
+      </div>
+      <div className="card-utility hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[560px] text-left">
         <thead className="text-caption text-ink-muted-48">
           <tr>
             <th className="pb-3 font-semibold">Descrição</th>
@@ -33,7 +40,8 @@ export function LancamentoTable({ items }: { items: LancamentoDTO[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }

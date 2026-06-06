@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { ChatMessage, ChatMessageStatus, SSEEvent } from "@fin-ai/shared";
+import type { ChatMessage, SSEEvent } from "@fin-ai/shared";
 import { api } from "@/lib/api";
 import { startWavRecording, type RecorderHandle } from "@/lib/audio";
 import { useSSE } from "@/hooks/useSSE";
@@ -13,21 +13,35 @@ export function useChat(userId: number | undefined) {
   const recorderRef = useRef<RecorderHandle | null>(null);
 
   const handleSSE = useCallback((event: SSEEvent) => {
-    const status = event.status as ChatMessageStatus;
-    setMessages((current) => [
-      ...current.map((message) =>
-        message.role === "user" && message.status !== "completed"
-          ? { ...message, status: status === "completed" ? ("completed" as ChatMessageStatus) : message.status }
+    setMessages((current) => {
+      const targetId = event.jobId;
+      const updated = current.map((message) =>
+        message.role === "user" &&
+        (targetId ? message.id === targetId : message.status !== "completed" && message.status !== "failed")
+          ? { ...message, status: event.status }
           : message,
-      ),
-      {
-        id: `assistant-${Date.now()}`,
-        content: event.message,
-        role: "assistant",
-        status: status === "failed" ? "failed" : "completed",
-        created_at: new Date().toISOString(),
-      },
-    ]);
+      );
+
+      if (event.status !== "completed" && event.status !== "failed") {
+        return updated;
+      }
+
+      const assistantId = `assistant-${targetId ?? event.status}`;
+      if (updated.some((message) => message.id === assistantId)) {
+        return updated;
+      }
+
+      return [
+        ...updated,
+        {
+          id: assistantId,
+          content: event.message,
+          role: "assistant",
+          status: event.status === "failed" ? "failed" : "completed",
+          created_at: new Date().toISOString(),
+        },
+      ];
+    });
   }, []);
 
   const { connected } = useSSE(userId, handleSSE);

@@ -5,6 +5,7 @@
   --color-primary: var(--color-primary);
   --color-primary-focus: var(--color-primary-focus);
   --color-primary-on-dark: var(--color-primary-on-dark);
+  --color-destructive: var(--color-destructive);
   --color-ink: var(--color-ink);
   --color-body: var(--color-body);
   --color-body-on-dark: var(--color-body-on-dark);
@@ -109,6 +110,25 @@ button:disabled {
   background: var(--color-canvas);
   color: var(--color-primary);
   padding: 11px 22px;
+}
+
+.btn-destructive {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--color-destructive);
+  border-radius: var(--radius-pill);
+  background: var(--color-canvas);
+  color: var(--color-destructive);
+  padding: 11px 22px;
+  white-space: nowrap;
+  transition: transform 120ms ease;
+}
+
+.btn-destructive:active {
+  transform: scale(0.95);
 }
 
 .btn-dark-utility {

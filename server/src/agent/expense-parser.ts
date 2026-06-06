@@ -1,13 +1,20 @@
-import { CATEGORIA_VALUES, type CategoriaValue } from '../lancamentos/categoria.values';
+import { CATEGORIA_VALUES } from '../lancamentos/categoria.values';
 import type { CreateLancamentoDto } from '../lancamentos/dto/create-lancamento.dto';
 
-export function parseCreateExpense(input: unknown): CreateLancamentoDto | null {
+export function parseCreateExpense(
+  input: unknown,
+  fallbackDate = today(),
+): CreateLancamentoDto | null {
   if (typeof input !== 'string') {
     return null;
   }
 
   const normalized = normalize(input);
-  if (!/(gastei|gasto|despesa|adicione|adicionar|registre|registrar)/.test(normalized)) {
+  if (
+    !/(gastei|gasto|despesa|adicione|adicionar|registre|registrar)/.test(
+      normalized,
+    )
+  ) {
     return null;
   }
 
@@ -34,24 +41,31 @@ export function parseCreateExpense(input: unknown): CreateLancamentoDto | null {
   return {
     descricao,
     valor,
-    categoria: categoria as CategoriaValue,
-    data: input.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? today(),
+    categoria: categoria,
+    data: input.match(/\d{4}-\d{2}-\d{2}/)?.[0] ?? fallbackDate,
   };
 }
 
 function extractDescription(input: string) {
-  const explicit = input.match(/descri[cç][aã]o\s+(.+?)(?:,\s*(?:valor|categoria|data)|$)/i)?.[1];
+  const explicit = input.match(
+    /descri[cç][aã]o\s+(.+?)(?:,\s*(?:valor|categoria|data)|$)/i,
+  )?.[1];
   if (explicit) {
     return cleanDescription(explicit);
   }
 
-  const location = input.match(/(?:no|na|em)\s+(.+?)(?:\s+na categoria|\s+categoria|,\s*categoria|,\s*data|$)/i)?.[1];
+  const location = input.match(
+    /(?:no|na|em)\s+(.+?)(?:\s+na categoria|\s+categoria|,\s*categoria|,\s*data|$)/i,
+  )?.[1];
   return location ? cleanDescription(location) : null;
 }
 
 function cleanDescription(value: string) {
   return value
-    .replace(/\s+(?:por\s+)?(?:R\$\s*)?\d+(?:[.,]\d{1,2})?\s*(?:reais|real)?/gi, '')
+    .replace(
+      /\s+(?:por\s+)?(?:R\$\s*)?\d+(?:[.,]\d{1,2})?\s*(?:reais|real)?/gi,
+      '',
+    )
     .trim()
     .replace(/[.,;:]$/, '')
     .slice(0, 255);

@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
 
 const toolMock = vi.hoisted(() =>
-  vi.fn((runner, options) => ({ runner, options })),
+  vi.fn((runner: unknown, options: unknown) => ({ runner, options })),
 );
 
 vi.mock('@langchain/core/tools', () => ({
@@ -47,7 +47,7 @@ describe('AgentToolFactoryService', () => {
       name: 'teste_contexto',
       description: 'teste',
       schema: z.object({ value: z.string() }),
-      execute: vi.fn(),
+      execute: vi.fn().mockResolvedValue(undefined),
     }) as unknown as {
       runner: (input: unknown, config: unknown) => Promise<unknown>;
     };

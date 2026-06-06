@@ -128,6 +128,41 @@ describeIfDbAvailable('backend-core integration', () => {
       })
       .expect(201);
 
+    const moradia = await http
+      .post('/lancamentos')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        descricao: 'Aluguel',
+        valor: 1200,
+        categoria: CategoriaEnum.Moradia,
+        data: '2026-01-12',
+      })
+      .expect(201);
+    expect(moradia.body.categoria).toBe(CategoriaEnum.Moradia);
+
+    const legacy = await http
+      .post('/lancamentos')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        descricao: 'Remedio',
+        valor: 40,
+        categoria: 'Saúde',
+        data: '2026-01-13',
+      })
+      .expect(201);
+    expect(legacy.body.categoria).toBe(CategoriaEnum.Saude);
+
+    await http
+      .post('/lancamentos')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({
+        descricao: 'Invalido',
+        valor: 10,
+        categoria: 'InvalidCategory',
+        data: '2026-01-14',
+      })
+      .expect(400);
+
     const list = await http
       .get(
         '/lancamentos?dataInicio=2026-01-01&dataFim=2026-01-31&categoria=Alimentação',
@@ -193,7 +228,7 @@ describeIfDbAvailable('backend-core integration', () => {
       .set('Authorization', `Bearer ${tokenA}`)
       .field('content', 'Quanto gastei?')
       .expect(202);
-    expect(text.body.status).toBe('pending');
+    expect(text.body.status).toBe('job_created');
     expect(text.body.jobId).toBeTruthy();
 
     await http

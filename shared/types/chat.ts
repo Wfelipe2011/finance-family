@@ -1,12 +1,31 @@
 export type ChatRole = "user" | "assistant";
 
-export type ChatMessageStatus = "pending" | "processing" | "completed" | "failed";
+export const CHAT_MESSAGE_STATUSES = [
+  "pending",
+  "job_created",
+  "transcribing",
+  "processing_ia",
+  "completed",
+  "failed",
+] as const;
+
+export type ChatMessageStatus = (typeof CHAT_MESSAGE_STATUSES)[number];
 
 export type ChatAttachmentType = "audio" | "image";
 
 export interface ChatAttachment {
   type: ChatAttachmentType;
   mime_type: string;
+}
+
+export interface FamilyContext {
+  userId: number;
+  spouseId?: number | null;
+  currentDate: string;
+  currentDateTime: string;
+  dayOfWeek: string;
+  timezone: string;
+  location?: string | null;
 }
 
 export interface ChatMessage {
@@ -20,11 +39,12 @@ export interface ChatMessage {
 
 export interface ChatJobResponse {
   jobId: string;
-  status: "pending";
+  status: "job_created";
 }
 
 export interface SSEEvent {
-  status: string;
+  status: ChatMessageStatus;
   message: string;
+  jobId?: string;
   data?: unknown;
 }

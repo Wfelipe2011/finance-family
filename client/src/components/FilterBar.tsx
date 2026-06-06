@@ -1,6 +1,7 @@
 "use client";
 
 import { CategoriaEnum, type LancamentoFilterDTO } from "@fin-ai/shared";
+import { CategoryChips } from "@/components/CategoryChips";
 
 type FilterBarProps = {
   value: LancamentoFilterDTO;
@@ -27,6 +28,7 @@ export function FilterBar({ value, onChange }: FilterBarProps) {
           ))}
         </select>
       </label>
+      <CategoryChips value={value} onChange={onChange} />
       <button type="button" className="btn-secondary-pill" onClick={() => onChange({})}>Limpar</button>
     </div>
   );

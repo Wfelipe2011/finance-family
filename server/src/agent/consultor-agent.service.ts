@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { ChatOpenAI } from '@langchain/openai';
+import type { AgentReadResult } from '@fin-ai/shared/lancamento';
 import { AgentFactoryService } from './agent-factory.service';
 import { AgentToolsService } from './agent-tools.service';
 
@@ -10,7 +11,11 @@ export class ConsultorAgentService {
     private readonly agentFactory: AgentFactoryService = new AgentFactoryService(),
   ) {}
 
-  async invoke(input: string, model: ChatOpenAI, usuarioId: number) {
+  async invoke(
+    input: string,
+    model: ChatOpenAI,
+    usuarioId: number,
+  ): Promise<AgentReadResult> {
     const agent = this.agentFactory.createStatelessAgent({
       model,
       tools: [this.toolsService.consultarGastosTool()],
@@ -22,7 +27,8 @@ export class ConsultorAgentService {
       { messages: [{ role: 'user', content: input }] },
       { context: { usuario_id: usuarioId } } as never,
     );
-    return this.extractText(result);
+    const message = this.extractText(result);
+    return { status: 'read', data: { message }, message };
   }
 
   private extractText(result: unknown) {

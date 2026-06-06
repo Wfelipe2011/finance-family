@@ -16,11 +16,11 @@ export class AgentToolFactoryService {
       input: z.infer<TSchema>,
       context: ToolContext,
       config: unknown,
-    ) => Promise<unknown> | unknown;
+    ) => Promise<unknown>;
   }) {
     return tool(
       async (input, config) =>
-        options.execute(
+        await options.execute(
           input as z.infer<TSchema>,
           { usuarioId: this.getUsuarioId(config) },
           config,

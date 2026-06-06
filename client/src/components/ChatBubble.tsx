@@ -20,7 +20,7 @@ export function ChatBubble({ message }: { message: ChatMessage }) {
             )}
           </div>
         ) : null}
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex min-w-0 justify-end">
           <StatusIndicator status={message.status} />
         </div>
       </div>

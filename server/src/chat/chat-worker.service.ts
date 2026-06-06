@@ -15,7 +15,7 @@ export class ChatWorkerService implements OnModuleInit {
     private readonly chatService: ChatService,
     private readonly orchestrator: AgentOrchestratorService,
     private readonly streamService: StreamService,
-  ) { }
+  ) {}
 
   async onModuleInit() {
     await this.queueService.registerWorker<ChatJobPayload>(
@@ -25,12 +25,30 @@ export class ChatWorkerService implements OnModuleInit {
   }
 
   private async handle(payload: ChatJobPayload, job: Job<ChatJobPayload>) {
+    const jobId = String(job.id);
     try {
-      await this.chatService.markProcessing(
-        payload.messageId,
-        payload.usuarioId,
-      );
-      const message = await this.orchestrator.process(payload);
+      const emitStatus = async (
+        status: 'transcribing' | 'processing_ia',
+        message: string,
+      ) => {
+        await this.chatService.updateStatus(
+          payload.messageId,
+          payload.usuarioId,
+          status,
+        );
+        this.streamService.emit(payload.usuarioId, {
+          status,
+          message,
+          jobId,
+          data: { messageId: payload.messageId },
+        });
+      };
+
+      const message = await this.orchestrator.process(payload, {
+        onTranscribing: () =>
+          emitStatus('transcribing', 'Extraindo dados do arquivo'),
+        onProcessingIa: () => emitStatus('processing_ia', 'Processando com IA'),
+      });
       await this.chatService.complete(
         payload.messageId,
         payload.usuarioId,
@@ -39,6 +57,8 @@ export class ChatWorkerService implements OnModuleInit {
       this.streamService.emit(payload.usuarioId, {
         status: 'completed',
         message,
+        jobId,
+        data: { messageId: payload.messageId },
       });
     } catch (error) {
       const metadata = job as unknown as {
@@ -51,7 +71,9 @@ export class ChatWorkerService implements OnModuleInit {
         await this.chatService.fail(payload.messageId, payload.usuarioId);
         this.streamService.emit(payload.usuarioId, {
           status: 'failed',
-          message: 'Processing failed',
+          message: 'Nao foi possivel processar sua mensagem agora.',
+          jobId,
+          data: { messageId: payload.messageId },
         });
       }
       this.logger.error(

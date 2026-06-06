@@ -21,6 +21,10 @@ export default defineConfig({
   resolve: {
     alias: [
       {
+        find: '@fin-ai/shared/chat',
+        replacement: resolve(__dirname, '../shared/types/chat.ts'),
+      },
+      {
         find: '@fin-ai/shared/lancamento',
         replacement: resolve(__dirname, '../shared/types/lancamento.ts'),
       },

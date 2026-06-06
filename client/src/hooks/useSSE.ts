@@ -1,8 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { SSEEvent } from "@fin-ai/shared";
+import { CHAT_MESSAGE_STATUSES, type SSEEvent } from "@fin-ai/shared";
 import { apiUrl, getStoredToken } from "@/lib/api";
+
+function toSSEEvent(data: string): SSEEvent | null {
+  try {
+    const parsed = JSON.parse(data) as Partial<SSEEvent>;
+    return parsed.status && CHAT_MESSAGE_STATUSES.includes(parsed.status)
+      ? {
+          status: parsed.status,
+          message: typeof parsed.message === "string" ? parsed.message : "",
+          jobId: typeof parsed.jobId === "string" ? parsed.jobId : undefined,
+          data: parsed.data,
+        }
+      : null;
+  } catch {
+    return { status: "completed", message: data };
+  }
+}
 
 export function useSSE(userId: number | undefined, onEvent: (event: SSEEvent) => void) {
   const [connected, setConnected] = useState(false);
@@ -16,11 +32,8 @@ export function useSSE(userId: number | undefined, onEvent: (event: SSEEvent) =>
     source.onopen = () => setConnected(true);
     source.onerror = () => setConnected(false);
     source.onmessage = (message) => {
-      try {
-        onEvent(JSON.parse(message.data) as SSEEvent);
-      } catch {
-        onEvent({ status: "completed", message: message.data });
-      }
+      const event = toSSEEvent(message.data);
+      if (event) onEvent(event);
     };
 
     return () => {

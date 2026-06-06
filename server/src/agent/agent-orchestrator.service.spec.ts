@@ -12,6 +12,10 @@ vi.mock('langchain', () => ({
 
 import { AgentOrchestratorService } from './agent-orchestrator.service';
 
+type AgentInvokeInput = {
+  messages: Array<{ content: string }>;
+};
+
 function serviceFactory() {
   const invokeMock = vi.fn().mockResolvedValue({
     messages: [{ content: 'resposta final' }],
@@ -61,6 +65,18 @@ function serviceFactory() {
   );
 
   return { service, invokeMock, memoryService };
+}
+
+function familyContext(userId = 7) {
+  return {
+    userId,
+    spouseId: null,
+    currentDate: '2026-06-06',
+    currentDateTime: '2026-06-06T12:00:00.000Z',
+    dayOfWeek: 'sábado',
+    timezone: 'America/Sao_Paulo',
+    location: null,
+  };
 }
 
 describe('AgentOrchestratorService memory', () => {
@@ -121,7 +137,8 @@ describe('AgentOrchestratorService memory', () => {
       ],
     });
 
-    const input = invokeMock.mock.calls[0][0].messages[0].content as string;
+    const invokeInput = invokeMock.mock.calls[0]?.[0] as AgentInvokeInput;
+    const input = invokeInput.messages[0]?.content ?? '';
     expect(input).toContain('Cadastre este gasto');
     expect(input).toContain('Imagem extraida');
     expect(input).toContain('Audio extraido');
@@ -140,5 +157,105 @@ describe('AgentOrchestratorService memory', () => {
         content: 'ok',
       }),
     ).rejects.toThrow(/memory-safe/);
+  });
+
+  it('keeps recent checkpoint thread for name recall in the same user thread', async () => {
+    const { service } = serviceFactory();
+    const invokeMock = vi
+      .fn()
+      .mockResolvedValueOnce({ messages: [{ content: 'Prazer, Wilson.' }] })
+      .mockResolvedValueOnce({ messages: [{ content: 'Seu nome e Wilson.' }] });
+    createAgentMock.mockReturnValue({ invoke: invokeMock });
+
+    await service.process({
+      messageId: 'message-4',
+      usuarioId: 11,
+      content: 'Me chamo Wilson',
+      rawInput: 'Me chamo Wilson',
+      familyContext: familyContext(11),
+    });
+    const answer = await service.process({
+      messageId: 'message-5',
+      usuarioId: 11,
+      content: 'Qual meu nome?',
+      rawInput: 'Qual meu nome?',
+      familyContext: familyContext(11),
+    });
+
+    expect(answer).toBe('Seu nome e Wilson.');
+    expect(invokeMock.mock.calls[0][1]).toMatchObject({
+      configurable: { thread_id: 'finai:user:11' },
+    });
+    expect(invokeMock.mock.calls[1][1]).toMatchObject({
+      configurable: { thread_id: 'finai:user:11' },
+    });
+  });
+
+  it('turns a mutation into draft without direct persistence and commits only after confirmation', async () => {
+    const operador = {
+      invoke: vi
+        .fn()
+        .mockResolvedValueOnce({
+          status: 'draft',
+          operation: 'create',
+          payload: {
+            descricao: 'mercado',
+            valor: 25,
+            categoria: 'Alimentação',
+            data: '2026-06-06',
+          },
+        })
+        .mockResolvedValueOnce({
+          status: 'commit',
+          operation: 'create',
+          payload: { id: 1, descricao: 'mercado' },
+          message: 'Gasto mercado cadastrado.',
+        }),
+    };
+    const lancamentos = {
+      findAll: vi.fn().mockResolvedValue([]),
+      create: vi.fn(),
+    };
+    const { memoryService } = serviceFactory();
+    const service = new AgentOrchestratorService(
+      {
+        getRaw: vi.fn().mockResolvedValue({
+          model: 'gemma-4',
+          baseUrl: 'http://localhost:11434/v1',
+          apiKey: 'test-key',
+        }),
+      } as never,
+      memoryService as never,
+      lancamentos as never,
+      { invoke: vi.fn() } as never,
+      { invoke: vi.fn() } as never,
+      { invoke: vi.fn() } as never,
+      operador as never,
+    );
+
+    const draftMessage = await service.process({
+      messageId: 'message-6',
+      usuarioId: 12,
+      content: 'gastei R$ 25 no mercado categoria Alimentação',
+      rawInput: 'gastei R$ 25 no mercado categoria Alimentação',
+      familyContext: familyContext(12),
+    });
+    const commitMessage = await service.process({
+      messageId: 'message-7',
+      usuarioId: 12,
+      content: 'sim',
+      rawInput: 'sim',
+      familyContext: familyContext(12),
+    });
+
+    expect(draftMessage).toContain('Confirma');
+    expect(commitMessage).toBe('Gasto mercado cadastrado.');
+    expect(lancamentos.create).not.toHaveBeenCalled();
+    expect(operador.invoke).toHaveBeenLastCalledWith(
+      expect.objectContaining({ action: 'commit', operation: 'create' }),
+      expect.any(Object),
+      12,
+      familyContext(12),
+    );
   });
 });

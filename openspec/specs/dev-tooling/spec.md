@@ -1,4 +1,7 @@
-## ADDED Requirements
+## Purpose
+Defines the development tooling requirements for builds, tests, shared TypeScript contracts, and project automation.
+
+## Requirements
 
 ### Requirement: SWC builder configured in NestJS
 The system SHALL configure the NestJS CLI to use SWC builder, reducing compilation time by ~20x compared to the default TypeScript compiler.
