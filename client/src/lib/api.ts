@@ -9,7 +9,7 @@ import type {
   UserProfile,
 } from "@fin-ai/shared";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:3001";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://api-family.wfelipe.com.br";
 const TOKEN_KEY = "finai.token";
 
 let onUnauthorized: (() => void) | undefined;

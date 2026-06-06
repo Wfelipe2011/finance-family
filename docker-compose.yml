@@ -6,7 +6,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-fin_ai}
     ports:
-      - "5432:5432"
+      - "6432:5432"
     volumes:
       - fin_ai_db:/var/lib/postgresql/data
     healthcheck:
@@ -47,7 +47,7 @@ services:
     environment:
       NODE_ENV: production
       PORT: ${CLIENT_PORT}
-      NEXT_PUBLIC_API_BASE_URL: ${NEXT_PUBLIC_API_BASE_URL}
+      NEXT_PUBLIC_API_BASE_URL: https://api-family.wfelipe.com.br
     ports:
       - "${CLIENT_PORT}:${CLIENT_PORT}"
     depends_on:
