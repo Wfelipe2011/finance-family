@@ -1,0 +1,35 @@
+FROM node:24-alpine AS deps
+WORKDIR /app/client
+COPY client/package*.json ./
+RUN npm ci
+
+FROM node:24-alpine AS builder
+WORKDIR /app
+COPY --from=deps /app/client/node_modules ./client/node_modules
+COPY client ./client
+COPY shared/types ./shared/types
+WORKDIR /app/client
+RUN npm run build
+
+FROM node:24-alpine AS production
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV HOSTNAME=0.0.0.0
+ENV PORT=3000
+
+RUN apk add --no-cache wget
+
+RUN addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 nextjs
+
+COPY --from=builder --chown=nextjs:nodejs /app/client/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/client/.next/static ./client/.next/static
+COPY --from=builder --chown=nextjs:nodejs /app/client/public ./client/public
+
+USER nextjs
+
+EXPOSE 3000
+
+CMD ["node", "client/server.js"]

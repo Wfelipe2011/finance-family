@@ -1,0 +1,40 @@
+## ADDED Requirements
+
+### Requirement: Auth DTOs defined
+The system SHALL define shared TypeScript types for authentication: `LoginRequest { email: string; password: string }`, `LoginResponse { access_token: string }`, `JwtPayload { sub: number; username: string }`, `UserProfile { userId: number; username: string }`.
+
+#### Scenario: Login DTO structure
+- **WHEN** a client sends a login request
+- **THEN** the request body matches `LoginRequest` interface with `email` and `password` fields
+
+#### Scenario: JWT payload structure
+- **WHEN** a JWT token is decoded
+- **THEN** the payload matches `JwtPayload` interface with `sub` (userId) and `username` fields
+
+### Requirement: Lancamento DTOs defined
+The system SHALL define shared TypeScript types for financial entries: `LancamentoDTO { id: number; descricao: string; valor: number; data: string; categoria: CategoriaEnum; usuario_id: number; created_at: string }`, `CreateLancamentoDTO { descricao: string; valor: number; categoria: CategoriaEnum; data?: string }`, `UpdateLancamentoDTO partial of CreateLancamentoDTO`, `LancamentoFilterDTO { dataInicio?: string; dataFim?: string; categoria?: CategoriaEnum }`.
+
+#### Scenario: Create lancamento payload
+- **WHEN** creating a new lancamento
+- **THEN** the request body matches `CreateLancamentoDTO` with required `descricao`, `valor`, `categoria` and optional `data`
+
+### Requirement: Chat message types defined
+The system SHALL define types for chat messages: `ChatMessage { id: string; content: string; role: 'user' | 'assistant'; status: 'pending' | 'processing' | 'completed' | 'failed'; created_at: string; attachments?: ChatAttachment[] }`, `ChatAttachment { type: 'audio' | 'image'; mime_type: string }`, `SSEEvent { status: string; message: string; data?: unknown }`.
+
+#### Scenario: SSE event structure
+- **WHEN** the server pushes a chat result via SSE
+- **THEN** the event matches `SSEEvent` interface with `status`, `message`, and optional `data`
+
+### Requirement: Config DTOs defined
+The system SHALL define types for IA configuration: `IAConfig { baseUrl: string; apiKey: string }`, `UpdateIAConfigDTO { baseUrl?: string; apiKey?: string }`.
+
+#### Scenario: IA config structure
+- **WHEN** the user saves IA settings
+- **THEN** the request body matches `IAConfig` with `baseUrl` and `apiKey` fields
+
+### Requirement: API endpoint contracts documented
+The system SHALL have a `endpoints.ts` file listing all API routes with HTTP method, path, request/response types as JSDoc comments.
+
+#### Scenario: Endpoint contract reference
+- **WHEN** a developer looks up an API endpoint
+- **THEN** the file documents method, path, request type, response type, and status codes

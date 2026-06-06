@@ -1,0 +1,16 @@
+services:
+  db-agent-live:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: fin_ai_agent_live
+    ports:
+      - "5434:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d fin_ai_agent_live"]
+      interval: 5s
+      timeout: 5s
+      retries: 10

@@ -1,0 +1,14 @@
+{
+  "name": "@fin-ai/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./index.ts",
+    "./auth": "./auth.ts",
+    "./lancamento": "./lancamento.ts",
+    "./chat": "./chat.ts",
+    "./config": "./config.ts",
+    "./endpoints": "./endpoints.ts"
+  }
+}
