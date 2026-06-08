@@ -10,7 +10,6 @@ type AgentFactoryOptions = {
 
 type MemoryfulAgentFactoryOptions = AgentFactoryOptions & {
   checkpointer: unknown;
-  store: unknown;
   middleware?: unknown[];
 };
 
@@ -23,7 +22,6 @@ export class AgentFactoryService {
       systemPrompt: options.systemPrompt,
       responseFormat: options.responseFormat,
       checkpointer: options.checkpointer,
-      store: options.store,
       middleware: options.middleware ?? [],
     } as never);
   }
