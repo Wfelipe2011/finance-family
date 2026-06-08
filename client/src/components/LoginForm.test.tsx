@@ -20,13 +20,14 @@ describe("LoginForm", () => {
     replace.mockReset();
   });
 
-  it("renders and validates input", async () => {
+  it("renders and validates input", () => {
     render(<LoginForm />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Entrar" }));
+    fireEvent.submit(screen.getByRole("button", { name: "Entrar" }).closest("form") as HTMLFormElement);
 
-    expect(await screen.findByText("Informe um email válido")).toBeTruthy();
+    expect(screen.getByText("Informe um email válido")).toBeTruthy();
     expect(screen.getByText("Use pelo menos 6 caracteres")).toBeTruthy();
+    expect(login).not.toHaveBeenCalled();
   });
 
   it("shows invalid credential error", async () => {

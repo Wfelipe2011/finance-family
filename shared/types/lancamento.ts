@@ -26,7 +26,10 @@ export interface LancamentoDTO {
   valor: number;
   data: string;
   categoria: CategoriaEnum;
-  usuario_id: number;
+  group_id?: number;
+  created_by_usuario_id?: number;
+  requested_by_usuario_id?: number | null;
+  usuario_id?: number;
   created_at: string;
 }
 
@@ -53,6 +56,8 @@ export interface AgentDraftResult<TPayload = unknown> {
   status: "draft";
   operation: AgentMutationOperation;
   payload: TPayload;
+  group_id?: number;
+  draft_id?: string;
   message?: string;
 }
 

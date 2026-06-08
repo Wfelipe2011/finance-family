@@ -18,6 +18,12 @@ import { ConsultorAgentService } from './consultor-agent.service';
 import { ImageExtractorAgentService } from './image-extractor-agent.service';
 import { OperadorAgentService } from './operador-agent.service';
 
+export interface AgentProcessLifecycle {
+  onTranscribing?: () => Promise<void>;
+  onProcessingIa?: () => Promise<void>;
+  onToken?: (delta: string) => Promise<void> | void;
+}
+
 @Injectable()
 export class AgentOrchestratorService {
   private readonly latestDraftByUser = new Map<number, AgentDraftResult>();
@@ -35,10 +41,7 @@ export class AgentOrchestratorService {
 
   async process(
     payload: ChatJobPayload,
-    lifecycle?: {
-      onTranscribing?: () => Promise<void>;
-      onProcessingIa?: () => Promise<void>;
-    },
+    lifecycle?: AgentProcessLifecycle,
   ) {
     const model = await this.modelFor(payload.usuarioId);
     if (payload.attachments?.length) {

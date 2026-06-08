@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   ForbiddenException,
+  Get,
   HttpCode,
   MessageEvent,
   Param,
@@ -61,5 +62,59 @@ export class ChatController {
       throw new ForbiddenException();
     }
     return this.streamService.stream(userId);
+  }
+
+}
+
+@Controller('groups/:groupId/chat')
+export class GroupChatController {
+  constructor(
+    private readonly chatService: ChatService,
+    private readonly streamService: StreamService,
+  ) {}
+
+  @Get('messages')
+  history(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+  ) {
+    return this.chatService.history(req.user.userId, groupId);
+  }
+
+  @Post('messages')
+  @HttpCode(202)
+  @UseInterceptors(
+    FileInterceptor('file', {
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_req, file, callback) => {
+        const valid = allowedFile(file);
+        callback(
+          valid ? null : new BadRequestException('Invalid file type'),
+          valid,
+        );
+      },
+    }),
+  )
+  submitGroup(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Body() dto: CreateChatMessageDto,
+    @UploadedFile() file?: Express.Multer.File,
+  ) {
+    return this.chatService.submitGroup(
+      req.user.userId,
+      groupId,
+      dto.content ?? '',
+      file,
+    );
+  }
+
+  @Sse('stream')
+  async groupStream(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+  ): Promise<Observable<MessageEvent>> {
+    await this.chatService.history(req.user.userId, groupId);
+    return this.streamService.streamGroup(groupId);
   }
 }

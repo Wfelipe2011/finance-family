@@ -4,6 +4,8 @@ import type { z } from 'zod';
 
 export type ToolContext = {
   usuarioId: number;
+  groupId?: number;
+  messageId?: string;
 };
 
 @Injectable()
@@ -22,7 +24,7 @@ export class AgentToolFactoryService {
       async (input, config) =>
         await options.execute(
           input as z.infer<TSchema>,
-          { usuarioId: this.getUsuarioId(config) },
+          this.getContext(config),
           config,
         ),
       {
@@ -39,5 +41,23 @@ export class AgentToolFactoryService {
       throw new Error('usuario_id missing from tool context');
     }
     return context.usuario_id;
+  }
+
+  getContext(config: unknown): ToolContext {
+    const context = (config as {
+      context?: {
+        usuario_id?: number;
+        group_id?: number;
+        message_id?: string;
+      };
+    })?.context;
+    if (!context?.usuario_id) {
+      throw new Error('usuario_id missing from tool context');
+    }
+    return {
+      usuarioId: context.usuario_id,
+      groupId: context.group_id,
+      messageId: context.message_id,
+    };
   }
 }

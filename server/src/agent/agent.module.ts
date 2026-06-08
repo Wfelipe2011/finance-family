@@ -2,6 +2,7 @@ import { Module, forwardRef } from '@nestjs/common';
 import { IAConfigModule } from '../config/ia-config.module';
 import { LancamentosModule } from '../lancamentos/lancamentos.module';
 import { ChatModule } from '../chat/chat.module';
+import { SkillsModule } from '../skills/skills.module';
 import { AgentFactoryService } from './agent-factory.service';
 import { AgentMemoryService } from './agent-memory.service';
 import { AgentOrchestratorService } from './agent-orchestrator.service';
@@ -13,7 +14,12 @@ import { ImageExtractorAgentService } from './image-extractor-agent.service';
 import { OperadorAgentService } from './operador-agent.service';
 
 @Module({
-  imports: [IAConfigModule, LancamentosModule, forwardRef(() => ChatModule)],
+  imports: [
+    IAConfigModule,
+    LancamentosModule,
+    SkillsModule,
+    forwardRef(() => ChatModule),
+  ],
   providers: [
     AgentFactoryService,
     AgentMemoryService,

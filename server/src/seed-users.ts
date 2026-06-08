@@ -1,8 +1,13 @@
 import 'reflect-metadata';
 import * as bcrypt from 'bcrypt';
 import { DataSource } from 'typeorm';
+import { AvatarAsset } from './entities/avatar-asset.entity';
 import { ChatMessage } from './entities/chat-message.entity';
+import { FamilyGroup } from './entities/family-group.entity';
+import { FamilyGroupMembership } from './entities/family-group-membership.entity';
+import { FamilyGroupSettings } from './entities/family-group-settings.entity';
 import { IAConfig } from './entities/ia-config.entity';
+import { JarvisFinanceDraft } from './entities/jarvis-finance-draft.entity';
 import { Lancamento } from './entities/lancamento.entity';
 import { Usuario } from './entities/usuario.entity';
 
@@ -33,7 +38,17 @@ async function seedUsersIntoDatabase() {
   const dataSource = new DataSource({
     type: 'postgres',
     url: process.env.DATABASE_URL,
-    entities: [Usuario, Lancamento, ChatMessage, IAConfig],
+    entities: [
+      Usuario,
+      Lancamento,
+      ChatMessage,
+      IAConfig,
+      FamilyGroup,
+      FamilyGroupMembership,
+      FamilyGroupSettings,
+      AvatarAsset,
+      JarvisFinanceDraft,
+    ],
     synchronize: false,
   });
 

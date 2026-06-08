@@ -24,10 +24,13 @@ export class AgentToolsService {
         categoria: categoriaSchema.optional(),
       }),
       execute: async (input, context) => {
-        const rows = await this.lancamentosService.findAll(
-          context.usuarioId,
-          input,
-        );
+        const rows = context.groupId
+          ? await this.lancamentosService.findAllForGroup(
+              context.usuarioId,
+              context.groupId,
+              input,
+            )
+          : await this.lancamentosService.findAll(context.usuarioId, input);
         return JSON.stringify(rows);
       },
     });
@@ -44,10 +47,22 @@ export class AgentToolsService {
         data: z.string().optional(),
       }),
       execute: async (input, context) => {
-        const row = await this.lancamentosService.create(
-          context.usuarioId,
-          input,
-        );
+        if (context.groupId) {
+          return JSON.stringify(
+            await this.lancamentosService.createDraft(
+              context.groupId,
+              context.usuarioId,
+              context.messageId ?? null,
+              {
+                status: 'draft',
+                operation: 'create',
+                payload: input,
+                message: `Vou cadastrar ${input.descricao} por R$ ${input.valor.toFixed(2)} em ${input.categoria}. Confirma?`,
+              },
+            ),
+          );
+        }
+        const row = await this.lancamentosService.create(context.usuarioId, input);
         return JSON.stringify({ status: 'created', lancamento: row });
       },
     });
@@ -66,11 +81,22 @@ export class AgentToolsService {
       }),
       execute: async (input, context) => {
         const { id, ...dto } = input;
-        const row = await this.lancamentosService.update(
-          context.usuarioId,
-          id,
-          dto,
-        );
+        if (context.groupId) {
+          return JSON.stringify(
+            await this.lancamentosService.createDraft(
+              context.groupId,
+              context.usuarioId,
+              context.messageId ?? null,
+              {
+                status: 'draft',
+                operation: 'edit',
+                payload: { id, ...dto },
+                message: `Vou editar o lancamento ${id}. Confirma?`,
+              },
+            ),
+          );
+        }
+        const row = await this.lancamentosService.update(context.usuarioId, id, dto);
         return JSON.stringify({ status: 'updated', lancamento: row });
       },
     });
@@ -85,6 +111,21 @@ export class AgentToolsService {
         id: z.number().int().positive(),
       }),
       execute: async (input, context) => {
+        if (context.groupId) {
+          return JSON.stringify(
+            await this.lancamentosService.createDraft(
+              context.groupId,
+              context.usuarioId,
+              context.messageId ?? null,
+              {
+                status: 'draft',
+                operation: 'delete',
+                payload: { id: input.id },
+                message: `Vou apagar o lancamento ${input.id}. Confirma?`,
+              },
+            ),
+          );
+        }
         await this.lancamentosService.delete(context.usuarioId, input.id);
         return JSON.stringify({ status: 'deleted', id: input.id });
       },

@@ -68,3 +68,91 @@ export class LancamentosController {
     await this.lancamentosService.delete(req.user.userId, id);
   }
 }
+
+@Controller('groups/:groupId/lancamentos')
+export class GroupLancamentosController {
+  constructor(private readonly lancamentosService: LancamentosService) {}
+
+  @Post()
+  createForGroup(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Body() dto: CreateLancamentoDto,
+  ) {
+    return this.lancamentosService.createForGroup(
+      req.user.userId,
+      groupId,
+      dto,
+    );
+  }
+
+  @Get()
+  findAllForGroup(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Query() filters: LancamentoFilterDto,
+  ) {
+    return this.lancamentosService.findAllForGroup(
+      req.user.userId,
+      groupId,
+      filters,
+    );
+  }
+
+  @Put(':id')
+  @Patch(':id')
+  updateForGroup(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateLancamentoDto,
+  ) {
+    return this.lancamentosService.updateForGroup(
+      req.user.userId,
+      groupId,
+      id,
+      dto,
+    );
+  }
+
+  @Delete(':id')
+  @HttpCode(204)
+  async deleteForGroup(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    await this.lancamentosService.deleteForGroup(req.user.userId, groupId, id);
+  }
+}
+
+@Controller('groups/:groupId/jarvis/drafts')
+export class GroupJarvisDraftsController {
+  constructor(private readonly lancamentosService: LancamentosService) {}
+
+  @Post(':draftId/confirm')
+  confirmDraft(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('draftId') draftId: string,
+  ) {
+    return this.lancamentosService.confirmDraft(
+      req.user.userId,
+      groupId,
+      draftId,
+    );
+  }
+
+  @Post(':draftId/reject')
+  rejectDraft(
+    @Request() req: AuthenticatedRequest,
+    @Param('groupId', ParseIntPipe) groupId: number,
+    @Param('draftId') draftId: string,
+  ) {
+    return this.lancamentosService.rejectDraft(
+      req.user.userId,
+      groupId,
+      draftId,
+    );
+  }
+}

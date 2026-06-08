@@ -11,6 +11,7 @@ import {
   CATEGORIA_VALUES,
   type CategoriaValue,
 } from '../lancamentos/categoria.values';
+import { FamilyGroup } from './family-group.entity';
 import { Usuario } from './usuario.entity';
 
 @Entity('lancamentos')
@@ -42,6 +43,36 @@ export class Lancamento {
   })
   @JoinColumn({ name: 'usuario_id' })
   usuario: Relation<Usuario>;
+
+  @Column({ type: 'int', nullable: true })
+  group_id: number | null;
+
+  @ManyToOne(() => FamilyGroup, (group) => group.lancamentos, {
+    nullable: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinColumn({ name: 'group_id' })
+  group: Relation<FamilyGroup> | null;
+
+  @Column({ type: 'int', nullable: true })
+  created_by_usuario_id: number | null;
+
+  @ManyToOne(() => Usuario, (usuario) => usuario.created_lancamentos, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'created_by_usuario_id' })
+  created_by_usuario: Relation<Usuario> | null;
+
+  @Column({ type: 'int', nullable: true })
+  requested_by_usuario_id: number | null;
+
+  @ManyToOne(() => Usuario, (usuario) => usuario.requested_lancamentos, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'requested_by_usuario_id' })
+  requested_by_usuario: Relation<Usuario> | null;
 
   @CreateDateColumn({ type: 'timestamp' })
   created_at: Date;

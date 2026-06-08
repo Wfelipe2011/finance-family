@@ -33,32 +33,48 @@ export class ChatWorkerService implements OnModuleInit {
       ) => {
         await this.chatService.updateStatus(
           payload.messageId,
-          payload.usuarioId,
+          payload.groupId,
           status,
         );
-        this.streamService.emit(payload.usuarioId, {
+        this.streamService.emitGroup(payload.groupId, {
+          type: 'message.status',
           status,
           message,
           jobId,
-          data: { messageId: payload.messageId },
+          messageId: payload.messageId,
         });
       };
 
+      const assistant = await this.chatService.startAssistantMessage(
+        payload.messageId,
+        payload.usuarioId,
+        payload.groupId,
+      );
       const message = await this.orchestrator.process(payload, {
         onTranscribing: () =>
           emitStatus('transcribing', 'Extraindo dados do arquivo'),
         onProcessingIa: () => emitStatus('processing_ia', 'Processando com IA'),
+        onToken: async (delta) =>
+          this.chatService.appendAssistantDelta(
+            assistant.id,
+            payload.groupId,
+            delta,
+            jobId,
+          ),
       });
       await this.chatService.complete(
         payload.messageId,
         payload.usuarioId,
+        payload.groupId,
         message,
+        assistant.id,
       );
-      this.streamService.emit(payload.usuarioId, {
+      this.streamService.emitGroup(payload.groupId, {
+        type: 'message.status',
         status: 'completed',
         message,
         jobId,
-        data: { messageId: payload.messageId },
+        messageId: payload.messageId,
       });
     } catch (error) {
       const metadata = job as unknown as {
@@ -68,12 +84,13 @@ export class ChatWorkerService implements OnModuleInit {
       const retryCount = Number(metadata.retryCount ?? 0);
       const retryLimit = Number(metadata.retryLimit ?? 5);
       if (retryCount + 1 >= retryLimit) {
-        await this.chatService.fail(payload.messageId, payload.usuarioId);
-        this.streamService.emit(payload.usuarioId, {
+        await this.chatService.fail(payload.messageId, payload.groupId);
+        this.streamService.emitGroup(payload.groupId, {
+          type: 'assistant.failed',
           status: 'failed',
           message: 'Nao foi possivel processar sua mensagem agora.',
           jobId,
-          data: { messageId: payload.messageId },
+          messageId: payload.messageId,
         });
       }
       this.logger.error(

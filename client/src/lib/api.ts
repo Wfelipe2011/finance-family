@@ -1,10 +1,16 @@
 import type {
+  AvatarUploadResponse,
   IAConfig,
   ChatJobResponse,
+  ChatMessage,
+  FamilyGroupDTO,
+  FamilyGroupSettingsDTO,
   LancamentoDTO,
   LancamentoFilterDTO,
   LoginRequest,
   LoginResponse,
+  JarvisSkillDTO,
+  UpdateFamilyGroupSettingsDTO,
   UpdateIAConfigDTO,
   UserProfile,
 } from "@fin-ai/shared";
@@ -98,8 +104,38 @@ export const api = {
     const query = params.toString();
     return apiFetch<string>(`/lancamentos/export${query ? `?${query}` : ""}`);
   },
-  chatMessage(formData: FormData) {
-    return apiFetch<ChatJobResponse>("/chat/message", { method: "POST", body: formData });
+  familyGroups() {
+    return apiFetch<FamilyGroupDTO[]>("/groups");
+  },
+  groupChatHistory(groupId: number) {
+    return apiFetch<ChatMessage[]>(`/groups/${groupId}/chat/messages`);
+  },
+  groupChatMessage(groupId: number, formData: FormData) {
+    return apiFetch<ChatJobResponse>(`/groups/${groupId}/chat/messages`, {
+      method: "POST",
+      body: formData,
+    });
+  },
+  skills() {
+    return apiFetch<JarvisSkillDTO[]>("/api/skills");
+  },
+  groupSettings(groupId: number) {
+    return apiFetch<FamilyGroupSettingsDTO>(`/groups/${groupId}/settings`);
+  },
+  updateGroupSettings(groupId: number, payload: UpdateFamilyGroupSettingsDTO) {
+    return apiFetch<FamilyGroupSettingsDTO>(`/groups/${groupId}/settings`, {
+      method: "PUT",
+      body: JSON.stringify(payload),
+    });
+  },
+  uploadUserAvatar(formData: FormData) {
+    return apiFetch<AvatarUploadResponse>("/users/me/avatar", { method: "POST", body: formData });
+  },
+  uploadJarvisAvatar(groupId: number, formData: FormData) {
+    return apiFetch<AvatarUploadResponse>(`/groups/${groupId}/jarvis/avatar`, {
+      method: "POST",
+      body: formData,
+    });
   },
   iaConfig() {
     return apiFetch<IAConfig>("/config/ia");
